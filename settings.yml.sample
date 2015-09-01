@@ -3,7 +3,7 @@ defaults: &defaults
   password: "your LinkedIn password"
   query:
     title: "engineering"
-    postcode: "94025"
+    postcodes: [94025, 90210]
     keywords: "ruby rails"
 
 development:
