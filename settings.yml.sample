@@ -1,0 +1,10 @@
+defaults: &defaults
+  username: "your LinkedIn username"
+  password: "your LinkedIn password"
+  query:
+    title: "engineering"
+    postcode: "94025"
+    keywords: "ruby rails"
+
+development:
+  <<: *defaults

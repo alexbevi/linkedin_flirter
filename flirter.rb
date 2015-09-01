@@ -1,101 +1,97 @@
-require 'selenium-webdriver'
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'bundler/setup'
 
-username = 'SECRET'
-pword = 'SECRET'
+Bundler.require
 
+class Settings < Settingslogic
+  source File.expand_path("../settings.yml", __FILE__)
 
-browser = Selenium::WebDriver.for :firefox
-browser.get 'https://linkedin.com'
-wait = Selenium::WebDriver::Wait.new(:timeout => 10)
-
-
-input_username = wait.until do
-  element = browser.find_element(:id, "session_key-login")
-  element if element.displayed?
+  namespace "development"
+  load!
 end
-input_username.send_keys(username)
 
-input_password = wait.until do
-  element = browser.find_element(:id, "session_password-login")
-  element if element.displayed?
+@browser = Selenium::WebDriver.for :firefox
+@browser.get 'https://linkedin.com'
+@wait = Selenium::WebDriver::Wait.new(timeout: 10)
+
+def find_field(selector, value)
+  field = @wait.until do
+    element = @browser.find_element(selector, value)
+    element if element.displayed?
+  end
+  field
 end
-input_password.send_keys(pword)
+
+def find_fields(selector, value)
+  fields = @wait.until do
+    element = @browser.find_elements(selector, value)
+    element if element.first.displayed?
+  end
+  fields
+end
+
+user = find_field(:id, "login-email")
+user.send_keys Settings.username
+
+pass = find_field(:id, "login-password")
+pass.send_keys Settings.password
+
 sleep 2
 
-signin = wait.until do
-  element = browser.find_element(:id, "signin")
-  element if element.displayed?
-end
+signin = find_field(:name, "submit")
 signin.click
+
 sleep 2
 
-advanced_search = wait.until do
-  element = browser.find_element(:id, "advanced-search")
-  element if element.displayed?
-end
+advanced_search = find_field(:id, "advanced-search")
 advanced_search.click
-sleep 2
 
+sleep 2
 
 # fill in search box
-keywords = wait.until do
-  element = browser.find_element(:id, "advs-keywords")
-  element if element.displayed?
-end
-keywords.send_keys("ruby rails")
+keywords = find_field(:id, "advs-keywords")
+keywords.send_keys Settings.query.keywords
 
-title = wait.until do
-  element = browser.find_element(:id, "advs-title")
-  element if element.displayed?
-end
-title.send_keys("engineering")
+title = find_field(:id, "advs-title")
+title.send_keys Settings.query.title
 
-postal_code = wait.until do 
-  element = browser.find_element(:id, "advs-postalCode")
-  element if element.displayed?
-end
-postal_code.send_keys("94103")
+location = find_field(:id, "advs-locationType")
+dropdown = Selenium::WebDriver::Support::Select.new(location)
+dropdown.select_by(:text, 'Located in or near:')
 
-distance = wait.until do
-  element = browser.find_element(:id, "advs-distance")
-  element if element.displayed?
-end
-distance.send_keys("10 ")
+postal_code = find_field(:id, "advs-postalCode")
+postal_code.send_keys Settings.query.postcode
 
-search = wait.until do
-  element = browser.find_element(:class, "submit-advs")
-  element if element.displayed?
-end
+sleep 2
+
+search = find_field(:class, "submit-advs")
 search.click
+
 sleep 2
 
 # collect urls of all people on each page
 profile_urls = []
 
-profile_links = browser.find_elements(:css, "ol#results a.title")
+profile_links = @browser.find_elements(:css, "ol#results a.title")
 profile_links.each { |link| profile_urls << link.attribute("href") }
 
 # puts profile_urls
 # do the same for the rest of the pages
-pagination_urls = browser.find_elements(:css, ".pagination a")
-      .map { |link| link.attribute("href") }
-      
+pagination_urls = @browser
+  .find_elements(:css, ".pagination a")
+  .map { |link| link.attribute("href") }
+
 pagination_urls.each do |url|
-  browser.get url
+  @browser.get url
   sleep 1
-  
-  profile_links = wait.until do
-    element = browser.find_elements(:css, "ol#results a.title")
-    element if element.first.displayed?
-  end
+
+  profile_links = find_fields(:css, "ol#results a.title")
   profile_links.each { |link| profile_urls << link.attribute("href") }
 end
 
-puts profile_urls
-
-profile_urls.each do |url|
-  browser.get url
+profile_urls.each_with_index do |url,idx|
+  puts "scraping #{idx + 1} of #{profile_urls.length}: #{url}"
+  @browser.get url
   sleep 2
 end
-
-
